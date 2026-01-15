@@ -26,7 +26,7 @@ def evaluate_agent(env, q_table, n_eval_episodes=100):
                 
     return total_reward / n_eval_episodes
 
-# --- 2. The Core Training Function (Updated to track Epsilon) ---
+# --- 2. The Core Training Function (With Model Saving) ---
 def run_blackjack(algo_type, episodes=200000, eval_interval=1000):
     env = gym.make('Blackjack-v1', sab=True) 
     q_table = np.zeros((32, 12, 2, 2))
@@ -38,7 +38,10 @@ def run_blackjack(algo_type, episodes=200000, eval_interval=1000):
     min_epsilon = 0.1
 
     eval_scores = []
-    epsilons = []  # <--- Added back for plotting
+    epsilons = [] 
+    
+    # --- Track Best Model ---
+    best_score = -np.inf  # Start with a very low score
     
     try:
         iterator = tqdm(range(episodes), desc=f"Training {algo_type}", leave=False)
@@ -51,13 +54,21 @@ def run_blackjack(algo_type, episodes=200000, eval_interval=1000):
         u_ace = int(u_ace)
         terminated = truncated = False
 
-        # Evaluation Step
+        # --- Evaluation & Saving Step ---
         if i % eval_interval == 0:
             avg_score = evaluate_agent(env, q_table, n_eval_episodes=100)
             eval_scores.append(avg_score)
-            epsilons.append(epsilon) # Track epsilon at evaluation points
+            epsilons.append(epsilon)
+            
+            # Save the model if it's the best one so far
+            if avg_score > best_score:
+                best_score = avg_score
+                filename = f"best_model_{algo_type}.npy"
+                np.save(filename, q_table)
+                # Optional: Update progress bar description
+                # iterator.set_description(f"Training {algo_type} (Best: {best_score:.3f})")
 
-        # Select Action
+        # --- Action Selection (Epsilon-Greedy) ---
         if np.random.uniform(0, 1) < epsilon:
             action = env.action_space.sample()
         else:
@@ -97,7 +108,7 @@ def run_blackjack(algo_type, episodes=200000, eval_interval=1000):
     env.close()
     return eval_scores, q_table, epsilons
 
-# --- 3. Visualization Functions (All Restored) ---
+# --- 3. Visualization Functions ---
 
 def plot_performance_with_error(q_data, s_data, eval_interval):
     q_mean = np.mean(q_data, axis=0)
@@ -121,7 +132,6 @@ def plot_performance_with_error(q_data, s_data, eval_interval):
     plt.show()
 
 def plot_epsilon_decay(epsilons, eval_interval):
-    """Restored: Shows how exploration decreases over time."""
     x = np.arange(0, len(epsilons) * eval_interval, eval_interval)
     plt.figure(figsize=(10, 4))
     plt.plot(x, epsilons, color='purple', linewidth=2)
@@ -156,15 +166,13 @@ def plot_policy(q_table, algo_name):
     plt.show()
 
 def plot_state_value(q_table, algo_name):
-    """Restored: Shows the 'Value' (expected reward) of each state."""
     state_value = np.max(q_table, axis=3)
-    player_range = range(12, 22) # Starting at 12 for cleaner view
+    player_range = range(12, 22) 
     dealer_range = range(1, 11)
     v_grid = np.zeros((len(player_range), len(dealer_range)))
     
     for i, p in enumerate(player_range):
         for j, d in enumerate(dealer_range):
-            # We average the value for Usable/No Usable ace for a general view, or just pick No Usable (0)
             v_grid[i, j] = state_value[p, d, 0] 
 
     plt.figure(figsize=(10, 8))
@@ -211,18 +219,19 @@ if __name__ == "__main__":
     for seed in range(N_SEEDS):
         print(f"   > Running Seed {seed+1}/{N_SEEDS}...")
         
-        # Train Q-Learning
+        # Train Q-Learning (and save best model)
         scores_q, q_q, eps = run_blackjack("Q-Learning", episodes=EPISODES, eval_interval=EVAL_INTERVAL)
         all_q_scores.append(scores_q)
         final_q_table_q = q_q 
-        final_epsilons = eps # Save one epsilon history for plotting
+        final_epsilons = eps 
         
-        # Train SARSA
+        # Train SARSA (and save best model)
         scores_s, q_s, _ = run_blackjack("SARSA", episodes=EPISODES, eval_interval=EVAL_INTERVAL)
         all_s_scores.append(scores_s)
         final_q_table_s = q_s
 
-    print("Simulation Complete. Generating All Reports...")
+    print("Simulation Complete. Best models saved as .npy files.")
+    print("Generating All Reports...")
 
     q_data_np = np.array(all_q_scores)
     s_data_np = np.array(all_s_scores)
@@ -230,14 +239,14 @@ if __name__ == "__main__":
     # 1. Performance (The Pro Graph)
     plot_performance_with_error(q_data_np, s_data_np, EVAL_INTERVAL)
 
-    # 2. Epsilon Decay (Restored)
+    # 2. Epsilon Decay
     plot_epsilon_decay(final_epsilons, EVAL_INTERVAL)
 
     # 3. Strategy Analysis
     plot_policy(final_q_table_q, "Q-Learning")
     plot_policy(final_q_table_s, "SARSA")
     
-    # 4. State Value Analysis (Restored)
+    # 4. State Value Analysis
     plot_state_value(final_q_table_q, "Q-Learning")
     plot_state_value(final_q_table_s, "SARSA")
 
