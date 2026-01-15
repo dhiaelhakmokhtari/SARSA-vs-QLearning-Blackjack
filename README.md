@@ -1,6 +1,3 @@
-Here is the complete content for your `README.md` file, formatted and ready to copy.
-
-```markdown
 # Comparative Analysis of SARSA and Q-Learning in Stochastic Blackjack
 
 ## Project Overview
@@ -99,7 +96,3 @@ Both algorithms successfully converge to an average reward of approximately **-0
 * Sticking on 12-16 when the Dealer shows a weak card (2-6).
 * Hitting on Soft 17 and below.
 * Hitting on Hard 11 or lower.
-
-```
-
-```
